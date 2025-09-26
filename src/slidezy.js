@@ -1,11 +1,12 @@
-function Slidezy (selector, options = {}) {
+function Slidezy(selector, options = {}) {
     this.container = document.querySelector(selector);
-    if(!this.container) {
+    if (!this.container) {
         console.error(`Slidezy: Container "${selector} not found"`);
     }
 
     this.opt = Object.assign({}, options);
     this.slides = Array.from(this.container.children);
+    this.currentIndex = 0;
 
     this._init();
     this._createNavigation();
@@ -18,12 +19,12 @@ Slidezy.prototype._init = function () {
 };
 
 Slidezy.prototype._createTrack = function () {
-    this.track = document.createElement('div');
+    this.track = document.createElement("div");
     // this.track.classList.add('slidezy-track');
-    this.track.className = 'slidezy-track';
+    this.track.className = "slidezy-track";
 
-    this.slides.forEach (slide => {
-        slide.classList.add('slidezy-slide');
+    this.slides.forEach((slide) => {
+        slide.classList.add("slidezy-slide");
         this.track.appendChild(slide);
     });
 
@@ -44,8 +45,13 @@ Slidezy.prototype._createNavigation = function () {
 
     this.prevBtn.onclick = () => this.moveSlide(-1);
     this.nextBtn.onclick = () => this.moveSlide(1);
-}
+};
 
 Slidezy.prototype.moveSlide = function (step) {
-    console.log(step);
-}
+    this.currentIndex = Math.min(
+        Math.max(this.currentIndex + step, 0),
+        this.slides.length - 3
+    );
+    this.offset = -(this.currentIndex * (100 / 3));
+    this.track.style.transform = `translateX(${this.offset}%)`;
+};
