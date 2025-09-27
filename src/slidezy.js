@@ -18,8 +18,9 @@ function Slidezy(selector, options = {}) {
         },
         options
     );
-    this.slides = Array.from(this.container.children);
-    this.currentIndex = this.opt.loop ? this.opt.items : 0;
+    this.originalSlides = Array.from(this.container.children);
+    this.slides = this.originalSlides.slice(0); // tạo mảng copy slices từ mảng gốc
+    this.currentIndex = this.opt.loop ? this._getCloneCount() : 0;
 
     this._init();
     this._updatePosition();
@@ -31,11 +32,13 @@ Slidezy.prototype._init = function () {
     this._createContent();
     this._createTrack();
 
-    if (this.opt.controls) {
+    const showNav = this._getSlideCount() > this.opt.items;
+
+    if (this.opt.controls && showNav) {
         this._createControl();
     }
 
-    if (this.opt.nav) {
+    if (this.opt.nav && showNav) {
         this._createNav();
     }
 };
@@ -46,16 +49,30 @@ Slidezy.prototype._createContent = function () {
     this.container.appendChild(this.content);
 };
 
+// Tinh so luong slide can clone
+Slidezy.prototype._getCloneCount = function () {
+    const slideCount = this._getSlideCount(); // dem so slide goc
+
+    if (slideCount <= this.opt.items) return 0; // so luong slide goc < so luong slide hien thi => khong can clone
+
+    const slideBy = this._getSlideBy(); // so buoc truot moi lan
+    const cloneCount = slideBy + this.opt.items; // so luong slide clone
+
+    return cloneCount > slideCount ? slideCount : cloneCount; // tranh clone nhieu hon tong so slide goc
+}
+
 Slidezy.prototype._createTrack = function () {
     this.track = document.createElement("div");
     // this.track.classList.add('slidezy-track');
     this.track.className = "slidezy-track";
-    if (this.opt.loop) {
+
+    const cloneCount = this._getCloneCount();
+    if (this.opt.loop && cloneCount > 0) {
         const cloneHead = this.slides
-            .slice(-this.opt.items)
+            .slice(-cloneCount)
             .map((node) => node.cloneNode(true));
         const cloneTail = this.slides
-            .slice(0, this.opt.items)
+            .slice(0, cloneCount)
             .map((node) => node.cloneNode(true));
         this.slides = cloneHead.concat(this.slides.concat(cloneTail));
     }
@@ -68,6 +85,10 @@ Slidezy.prototype._createTrack = function () {
 
     this.content.appendChild(this.track);
 };
+
+Slidezy.prototype._getSlideBy = function () {
+    return this.opt.slideBy === "page" ? this.opt.items : this.opt.slideBy;
+}
 
 Slidezy.prototype._createControl = function () {
     this.prevBtn = this.opt.prevButton
@@ -89,14 +110,14 @@ Slidezy.prototype._createControl = function () {
         this.content.append(this.nextBtn);
     }
 
-    const stepSize = this.opt.slideBy === 'page' ? this.opt.items : this.opt.slideBy;
+    const slideBy = this._getSlideBy();
 
-    this.prevBtn.onclick = () => this.moveSlide(-stepSize);
-    this.nextBtn.onclick = () => this.moveSlide(stepSize);
+    this.prevBtn.onclick = () => this.moveSlide(-slideBy);
+    this.nextBtn.onclick = () => this.moveSlide(slideBy);
 };
 
-this.prototype._getSlideCount = function () {
-    return this.slides.length - (this.opt.loop ? this.opt.items * 2 : 0);
+Slidezy.prototype._getSlideCount = function () {
+    return this.originalSlides.length;
 }
 
 Slidezy.prototype._createNav = function () {
@@ -114,7 +135,7 @@ Slidezy.prototype._createNav = function () {
 
         dot.onclick = () => {
             this.currentIndex = this.opt.loop
-                ? i * this.opt.items + this.opt.items
+                ? i * this.opt.items + this._getCloneCount()
                 : i * this.opt.items;
             this._updatePosition();
         };
@@ -137,8 +158,8 @@ Slidezy.prototype.moveSlide = function (step) {
     setTimeout(() => {
         if (this.opt.loop) {
             const slideCount = this._getSlideCount();
-            
-            if (this.currentIndex < this.opt.items) {
+
+            if (this.currentIndex < this._getCloneCount()) {
                 this.currentIndex += slideCount;
                 this._updatePosition(true);
             } else if (this.currentIndex > slideCount) {
