@@ -15,6 +15,9 @@ function Slidezy(selector, options = {}) {
             prevButton: null,
             nextButton: null,
             slideBy: 1,
+            autoplay: false,
+            autoplayTimeout: 3000,
+            autoplayHoverPause: true,
         },
         options
     );
@@ -35,12 +38,34 @@ Slidezy.prototype._init = function () {
     const showNav = this._getSlideCount() > this.opt.items;
 
     if (this.opt.controls && showNav) {
-        this._createControl();
+        this._createControls();
     }
 
     if (this.opt.nav && showNav) {
         this._createNav();
     }
+
+    if (this.opt.autoplay) {
+        this._startAutoplay();
+
+        if (this.opt.autoplayHoverPause) {
+            this.container.onmouseenter = () => this._stopAutoplay();
+            this.container.onmouseleave = () => this._startAutoplay();
+        }
+    }
+};
+
+Slidezy.prototype._startAutoplay = function () {
+    if (this.autoplayTimer) return;
+    const slideBy = this._getSlideBy();
+    this.autoplayTimer = setInterval(() => {
+        this.moveSlide(slideBy);
+    }, this.opt.autoplayTimeout);
+};
+
+Slidezy.prototype._stopAutoplay = function () {
+    clearInterval(this.autoplayTimer);
+    this.autoplayTimer = null;
 };
 
 Slidezy.prototype._createContent = function () {
@@ -59,7 +84,7 @@ Slidezy.prototype._getCloneCount = function () {
     const cloneCount = slideBy + this.opt.items; // so luong slide clone
 
     return cloneCount > slideCount ? slideCount : cloneCount; // tranh clone nhieu hon tong so slide goc
-}
+};
 
 Slidezy.prototype._createTrack = function () {
     this.track = document.createElement("div");
@@ -88,9 +113,9 @@ Slidezy.prototype._createTrack = function () {
 
 Slidezy.prototype._getSlideBy = function () {
     return this.opt.slideBy === "page" ? this.opt.items : this.opt.slideBy;
-}
+};
 
-Slidezy.prototype._createControl = function () {
+Slidezy.prototype._createControls = function () {
     this.prevBtn = this.opt.prevButton
         ? document.querySelector(this.opt.prevButton)
         : document.createElement("button");
@@ -101,13 +126,13 @@ Slidezy.prototype._createControl = function () {
     if (!this.opt.prevButton) {
         this.prevBtn.textContent = this.opt.controlsText[0];
         this.prevBtn.className = "slidezy-prev";
-        this.content.append(this.prevBtn);
+        this.content.appendChild(this.prevBtn);
     }
 
     if (!this.opt.nextButton) {
         this.nextBtn.textContent = this.opt.controlsText[1];
         this.nextBtn.className = "slidezy-next";
-        this.content.append(this.nextBtn);
+        this.content.appendChild(this.nextBtn);
     }
 
     const slideBy = this._getSlideBy();
@@ -118,11 +143,11 @@ Slidezy.prototype._createControl = function () {
 
 Slidezy.prototype._getSlideCount = function () {
     return this.originalSlides.length;
-}
+};
 
 Slidezy.prototype._createNav = function () {
-    this.navWraper = document.createElement("div");
-    this.navWraper.className = "slidezy-nav";
+    this.navWrapper = document.createElement("div");
+    this.navWrapper.className = "slidezy-nav";
 
     const slideCount = this._getSlideCount();
     const pageCount = Math.ceil(slideCount / this.opt.items);
@@ -140,10 +165,10 @@ Slidezy.prototype._createNav = function () {
             this._updatePosition();
         };
 
-        this.navWraper.appendChild(dot);
+        this.navWrapper.appendChild(dot);
     }
 
-    this.container.appendChild(this.navWraper);
+    this.container.appendChild(this.navWrapper);
 };
 
 Slidezy.prototype.moveSlide = function (step) {
@@ -176,13 +201,13 @@ Slidezy.prototype.moveSlide = function (step) {
 Slidezy.prototype._updateNav = function () {
     let realIndex = this.currentIndex;
     if (this.opt.loop) {
-        const slideCount = this.slides.length - this.opt.items * 2;
+        const slideCount = this._getSlideCount();
         realIndex =
-            (this.currentIndex - this.opt.items + slideCount) % slideCount;
+            (this.currentIndex - this._getCloneCount() + slideCount) % slideCount;
     }
 
     const pageIndex = Math.floor(realIndex / this.opt.items);
-    const dots = Array.from(this.navWraper.children);
+    const dots = Array.from(this.navWrapper.children);
     dots.forEach((dot, index) => {
         dot.classList.toggle("active", index === pageIndex);
     });
